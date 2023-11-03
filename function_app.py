@@ -4,6 +4,8 @@ import requests as r
 import base64
 import os
 
+logging.basicConfig(level=logging.INFO)
+
 app = func.FunctionApp()
 
 client_id = os.environ["CLIENT_ID"]
@@ -28,9 +30,15 @@ def get_access_token_using_refresh_token(refresh_token:str = refresh_token) -> s
     'Content-Type': 'application/x-www-form-urlencoded'
     }
 
+    headers = {
+    "Authorization": f"Basic ZThkZWUxNmEwNGYxNGZmMmJmYmVkMmNmYTQ4ZTgzZDY6NTcyMDE4YzA3NmE0NGRlMDgxYTBlZTY2MWQ5NDdmYjQ=",
+    'Content-Type': 'application/x-www-form-urlencoded'
+    }
+
     payload = {
         'grant_type': 'refresh_token',
-        'refresh_token': refresh_token
+        'refresh_token': refresh_token,
+        'client_id': client_id
     }
 
     response = r.post("https://accounts.spotify.com/api/token", headers=headers, data=payload)
@@ -109,28 +117,28 @@ def check_if_track_is_in_playlist(track_id:str, playlist_id:str = backup_playlis
 
     return False
 
-def insert_tracks_in_playlist(playlist_id:str = backup_playlist_id, track_ids:list = None, access_token:str = None) -> None:
+def insert_track_in_playlist(playlist_id:str = backup_playlist_id, track_id:str = None, access_token:str = None) -> None:
     """
-    Inserts tracks in a playlist.
+    Inserts track in a playlist.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
-    for track in track_ids:
-        if check_if_track_is_in_playlist(track, playlist_id, access_token):
-            logging.info(f"{track} is already in playlist.")
-            continue
-        
-        payload = {
-            "uris": [track]
-        }
-        response = r.post(f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks", headers=headers, json=payload)
-        if response:
-            return response
-    logging.info("No new songs to add. None added.")
-    return "No new songs to add. None added."
+    if check_if_track_is_in_playlist(track_id, playlist_id, access_token):
+        logging.info(f"{track_id} is already in playlist.")
+        return f"{track_id} is already in playlist."
+    
+    payload = {
+        "uris": [track_id]
+    }
+    response = r.post(f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks", headers=headers, json=payload)
+    
+    if response:
+        logging.info(f"Successfully added {track_id} to playlist.")
+        return response.json()
+
 
 @app.schedule(schedule="0 0 6 * * 1", arg_name="myTimer", use_monitor=False) 
 def timer_trigger(myTimer: func.TimerRequest) -> None:
@@ -149,7 +157,5 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
     discover_weekly_track_ids = get_trackids_from_playlist(access_token=access_token, playlist_id=discover_weekly_playlist_id)
     
     logging.info("Inserting tracks into backup playlist.")
-    insert_tracks_in_playlist(playlist_id=backup_playlist_id, track_ids=discover_weekly_track_ids,access_token=access_token)
-
-if __name__ == '__main__':
-    print(client_secret, client_id)
+    for track_id in discover_weekly_track_ids:
+        insert_track_in_playlist(playlist_id=backup_playlist_id, track_id=track_id,access_token=access_token)
