@@ -14,7 +14,7 @@ refresh_token = os.environ["REFRESH_TOKEN"]
 spotify_id = os.environ["SPOTIFY_ID"]
 backup_playlist_id = os.environ["BACKUP_PLAYLIST_ID"]
 user_id = os.environ["USER_ID"]
-discover_weekly_playlist_id = ""
+discover_weekly_playlist_id = os.environ["DISCOVER_WEEKLY_PLAYLIST_ID"]
 
 auth_token = client_id + ':' + client_secret
 auth_token_bytes = auth_token.encode('utf-8')
@@ -74,20 +74,21 @@ def get_current_users_id(access_token:str = None) -> str:
     return user_id
 
 
-def get_discover_weekly_playlist_id(user_id:str = user_id, access_token:str = None) -> str:
-    """
-    Returns the discover weekly playlist id.
-    """
-    if access_token is None:
-        access_token = get_access_token_using_refresh_token()
+# def get_discover_weekly_playlist_id(user_id:str = user_id, access_token:str = None) -> str:
+#     """
+#     Returns the discover weekly playlist id.
+#     """
+#     if access_token is None:
+#         access_token = get_access_token_using_refresh_token()
 
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
+#     headers = {
+#         "Authorization": f"Bearer {access_token}"
+#     }
 
-    response = r.get(f"https://api.spotify.com/v1/search?q=Discover+Weekly&type=playlist&owner=Spotify", headers=headers)
-    discover_weekly_playlist_id = response.json()['playlists']['items'][0]['id']
-    return discover_weekly_playlist_id
+#     breakpoint()
+#     response = r.get(f"https://api.spotify.com/v1/playlists/37i9dQZEVXcCD0aixnwKnn", headers=headers)
+#     discover_weekly_playlist_id = response.json()['playlists']['items'][0]['id']
+#     return discover_weekly_playlist_id
 
 
 def check_if_track_is_in_playlist(track_id:str, playlist_id:str = backup_playlist_id, access_token:str = None) -> bool:
@@ -146,16 +147,16 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
 
     logging.info("Getting access token.")
     access_token = get_access_token_using_refresh_token()
-    
-    logging.info("Getting access token.")
+    logging.info(f"Found access token: {access_token}")
+
+    logging.info("Getting user id.")
     user_id = get_current_users_id(access_token=access_token)
-    
-    logging.info("Getting discover weekly playlist id.")
-    discover_weekly_playlist_id = get_discover_weekly_playlist_id(user_id=user_id, access_token=access_token)
+    logging.info(f"Found user id: {user_id}")
     
     logging.info("Getting discover weekly playlist track ids.")
     discover_weekly_track_ids = get_trackids_from_playlist(access_token=access_token, playlist_id=discover_weekly_playlist_id)
-    
+    logging.info("Found discover weekly track ids: {discover_weekly_track_id}}")
+
     logging.info("Inserting tracks into backup playlist.")
     for track_id in discover_weekly_track_ids:
         insert_track_in_playlist(playlist_id=backup_playlist_id, track_id=track_id,access_token=access_token)
